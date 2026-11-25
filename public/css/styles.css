@@ -1,0 +1,331 @@
+:root {
+  --cbs-primary: #1d4ed8;
+  --cbs-primary-hover: #1e40af;
+  --cbs-text: #1f2937;
+  --cbs-text-muted: #6b7280;
+  --cbs-credit: #166534;
+  --cbs-debit: #b42318;
+  --cbs-warning: #b54708;
+  --cbs-bg: #f8fafc;
+  --cbs-surface: #ffffff;
+  --cbs-border: #e5e7eb;
+  --cbs-sidebar-width: 16rem;
+  --cbs-focus-ring: 0 0 0 0.2rem rgba(29, 78, 216, 0.35);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--cbs-text);
+  background-color: var(--cbs-bg);
+  min-height: 100vh;
+}
+
+/* Bootstrap theme tokens */
+.btn-primary {
+  --bs-btn-bg: var(--cbs-primary);
+  --bs-btn-border-color: var(--cbs-primary);
+  --bs-btn-hover-bg: var(--cbs-primary-hover);
+  --bs-btn-hover-border-color: var(--cbs-primary-hover);
+  --bs-btn-active-bg: var(--cbs-primary-hover);
+  --bs-btn-active-border-color: var(--cbs-primary-hover);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--cbs-primary);
+  --bs-btn-border-color: var(--cbs-primary);
+  --bs-btn-hover-bg: var(--cbs-primary);
+  --bs-btn-hover-border-color: var(--cbs-primary);
+  --bs-btn-active-bg: var(--cbs-primary);
+  --bs-btn-active-border-color: var(--cbs-primary);
+}
+
+.btn-warning {
+  --bs-btn-bg: var(--cbs-warning);
+  --bs-btn-border-color: var(--cbs-warning);
+  --bs-btn-color: #fff;
+  --bs-btn-hover-bg: #92400e;
+  --bs-btn-hover-border-color: #92400e;
+  --bs-btn-hover-color: #fff;
+}
+
+.text-primary {
+  color: var(--cbs-primary) !important;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  z-index: 2000;
+  padding: 0.5rem 1rem;
+  background: var(--cbs-surface);
+  border: 2px solid var(--cbs-primary);
+  border-radius: 0.375rem;
+}
+
+/* Demo banner */
+.demo-banner {
+  background: linear-gradient(90deg, #1e3a8a 0%, var(--cbs-primary) 100%);
+  color: #fff;
+  font-size: 0.875rem;
+}
+
+.demo-banner__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 1rem;
+}
+
+.demo-banner__badge {
+  display: inline-block;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.demo-banner__text {
+  opacity: 0.95;
+}
+
+/* App chrome */
+.app-shell {
+  min-height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background: var(--cbs-surface);
+}
+
+.app-title {
+  color: var(--cbs-text);
+  font-weight: 700;
+}
+
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  background: var(--cbs-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.app-body {
+  flex: 1;
+}
+
+.app-sidebar {
+  background: var(--cbs-surface);
+  min-height: 100%;
+}
+
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    border-right: none !important;
+    border-bottom: 1px solid var(--cbs-border);
+  }
+
+  .app-nav {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .app-nav__link {
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.375rem;
+  }
+}
+
+.app-main {
+  padding: 1.25rem 1.5rem 2rem;
+}
+
+@media (max-width: 575.98px) {
+  .app-main {
+    padding: 1rem;
+  }
+}
+
+/* Navigation */
+.app-nav__link {
+  color: var(--cbs-text);
+  font-weight: 500;
+  padding: 0.6rem 1rem;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+}
+
+.app-nav__link:hover,
+.app-nav__link:focus {
+  color: var(--cbs-primary);
+  background: rgba(29, 78, 216, 0.06);
+}
+
+.app-nav__link.active {
+  color: var(--cbs-primary);
+  background: rgba(29, 78, 216, 0.08);
+  border-left-color: var(--cbs-primary);
+  font-weight: 600;
+}
+
+@media (max-width: 991.98px) {
+  .app-nav__link.active {
+    border-left-color: transparent;
+    background: rgba(29, 78, 216, 0.12);
+  }
+}
+
+/* Views */
+.view-panel {
+  animation: view-fade-in 0.2s ease-out;
+}
+
+.view-title {
+  font-weight: 700;
+  color: var(--cbs-text);
+}
+
+.view-header {
+  border-bottom: 1px solid var(--cbs-border);
+  padding-bottom: 0.75rem;
+}
+
+@keyframes view-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Feedback */
+.feedback-region {
+  min-height: 0;
+  margin-bottom: 1rem;
+}
+
+.feedback-region:not(:empty) {
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--cbs-border);
+  background: var(--cbs-surface);
+}
+
+/* Cards */
+.card {
+  border-color: var(--cbs-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.summary-card__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cbs-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-card__value--credit {
+  color: var(--cbs-credit);
+}
+
+.summary-card__value--debit {
+  color: var(--cbs-debit);
+}
+
+/* Statement */
+.statement-table-wrap {
+  background: var(--cbs-surface);
+  border: 1px solid var(--cbs-border);
+  border-radius: 0.375rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.statement-table th {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--cbs-text-muted);
+}
+
+.statement-balances strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Amount semantics for JS-populated rows */
+.amount-credit {
+  color: var(--cbs-credit);
+  font-weight: 600;
+}
+
+.amount-debit {
+  color: var(--cbs-debit);
+  font-weight: 600;
+}
+
+/* Forms */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--cbs-primary);
+  box-shadow: var(--cbs-focus-ring);
+}
+
+/* Role switch */
+.role-switch .form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cbs-text);
+}
+
+/* About */
+.about-list li {
+  margin-bottom: 0.35rem;
+}
+
+.about-list li:last-child {
+  margin-bottom: 0;
+}
+
+.placeholder-empty {
+  font-style: italic;
+}
+
+/* Admin nav hint (optional visibility; JS may toggle) */
+body[data-role="developer"] .app-nav__link--admin {
+  opacity: 0.55;
+}
+
+body[data-role="admin"] .app-nav__link--admin {
+  opacity: 1;
+  font-weight: 600;
+}
