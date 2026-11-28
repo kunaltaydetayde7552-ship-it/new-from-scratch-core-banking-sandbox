@@ -404,7 +404,7 @@
             <td><span class="badge text-bg-secondary text-capitalize">${escapeHtml(acc.type)}</span></td>
             <td class="text-end font-monospace fw-semibold ${balClass}">${escapeHtml(formatMoney(bal))}</td>
             <td>${od}</td>
-            <td class="text-end" onclick="event.stopPropagation();">
+            <td class="text-end">
               <button type="button" class="btn btn-sm ${getRole() === 'admin' ? 'btn-outline-danger' : 'btn-outline-secondary opacity-75'} btn-delete-account" data-account-id="${escapeHtml(acc.accountId)}" title="${getRole() === 'admin' ? 'Delete Account' : 'Admin role required to delete account'}">
                 ${getRole() === 'admin' ? 'Delete' : 'Delete (Admin)'}
               </button>
@@ -497,6 +497,12 @@
       deleteBtn.className = isAdmin ? 'btn btn-outline-danger btn-sm' : 'btn btn-outline-secondary btn-sm opacity-75';
       deleteBtn.onclick = () => {
         if (!isAdmin) {
+          if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const m = bootstrap.Modal.getInstance(modalEl);
+            if (m) {
+              m.hide();
+            }
+          }
           showFeedback('error', 'Developer role does not have permission to delete accounts. Please switch to Admin role in header.');
           return;
         }
