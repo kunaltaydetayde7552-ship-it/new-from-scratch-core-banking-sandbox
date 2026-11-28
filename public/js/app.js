@@ -197,6 +197,9 @@
     const ok = bootstrapData();
     wireNavigation();
     wireRoleSwitch();
+    if (ui.updateThemeToggleUI) {
+      ui.updateThemeToggleUI();
+    }
     ui.renderRoleSwitch();
 
     let initialView = 'dashboard';
@@ -219,6 +222,11 @@
     navigate,
     setRole,
     init
+  };
+
+  root.CoreBank = root.CoreBank || {};
+  root.CoreBank.getRole = function () {
+    return state.role || 'developer';
   };
 
   if (document.readyState === 'loading') {

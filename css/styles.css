@@ -6,6 +6,9 @@
   --cbs-credit: #166534;
   --cbs-debit: #b42318;
   --cbs-warning: #b54708;
+  --cbs-error: #dc2626;
+  --cbs-error-bg: rgba(220, 38, 38, 0.08);
+  --cbs-error-border: #dc2626;
   --cbs-bg: #f8fafc;
   --cbs-surface: #ffffff;
   --cbs-border: #e5e7eb;
@@ -328,4 +331,187 @@ body[data-role="developer"] .app-nav__link--admin {
 body[data-role="admin"] .app-nav__link--admin {
   opacity: 1;
   font-weight: 600;
+}
+
+/* ==========================================================================
+   1. Error Colour — All error messages, validation errors and error alerts
+   MUST be displayed in RED in both themes.
+   ========================================================================== */
+.alert-danger {
+  color: var(--cbs-error) !important;
+  border-color: var(--cbs-error-border) !important;
+  background-color: var(--cbs-error-bg) !important;
+}
+
+.alert-danger * {
+  color: var(--cbs-error) !important;
+}
+
+.text-danger,
+.invalid-feedback,
+.is-invalid,
+.error-text,
+.error-message {
+  color: var(--cbs-error) !important;
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: var(--cbs-error) !important;
+}
+
+/* ==========================================================================
+   2. Customer details on tap & Account Actions
+   ========================================================================== */
+.account-row-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.account-row-clickable:hover {
+  background-color: rgba(29, 78, 216, 0.07) !important;
+}
+
+/* ==========================================================================
+   3. ATM Machine Mini-Statement / Receipt Format
+   ========================================================================== */
+.atm-receipt-container {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.atm-receipt {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  background: #ffffff;
+  color: #111827;
+  padding: 1.25rem 1.5rem;
+  border: 1px dashed #9ca3af;
+  border-radius: 4px;
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   4. Themes — Dark & Light Theme System
+   ========================================================================== */
+body.theme-dark {
+  --cbs-bg: #0f172a;
+  --cbs-surface: #1e293b;
+  --cbs-text: #f8fafc;
+  --cbs-text-muted: #94a3b8;
+  --cbs-border: #334155;
+  --cbs-error: #ef4444;
+  --cbs-error-bg: rgba(239, 68, 68, 0.15);
+  --cbs-error-border: #ef4444;
+  background-color: var(--cbs-bg);
+  color: var(--cbs-text);
+}
+
+body.theme-dark .app-header,
+body.theme-dark .app-sidebar,
+body.theme-dark .card,
+body.theme-dark .modal-content,
+body.theme-dark .statement-table-wrap,
+body.theme-dark .account-table-wrap,
+body.theme-dark .feedback-region:not(:empty) {
+  background-color: var(--cbs-surface) !important;
+  color: var(--cbs-text) !important;
+  border-color: var(--cbs-border) !important;
+}
+
+body.theme-dark .view-title,
+body.theme-dark .app-title,
+body.theme-dark .card-title,
+body.theme-dark h1, body.theme-dark h2, body.theme-dark h3,
+body.theme-dark h4, body.theme-dark h5, body.theme-dark h6,
+body.theme-dark strong,
+body.theme-dark .summary-card__value {
+  color: var(--cbs-text) !important;
+}
+
+body.theme-dark .text-muted,
+body.theme-dark .app-subtitle,
+body.theme-dark .statement-table th {
+  color: var(--cbs-text-muted) !important;
+}
+
+body.theme-dark .table {
+  color: var(--cbs-text) !important;
+  --bs-table-color: var(--cbs-text) !important;
+  --bs-table-bg: var(--cbs-surface) !important;
+  --bs-table-striped-bg: #243247 !important;
+  --bs-table-hover-bg: #2c3e55 !important;
+}
+
+body.theme-dark .form-control,
+body.theme-dark .form-select {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: var(--cbs-border) !important;
+}
+
+body.theme-dark .form-control:focus,
+body.theme-dark .form-select:focus {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+body.theme-dark .app-nav__link {
+  color: var(--cbs-text);
+}
+
+body.theme-dark .app-nav__link:hover,
+body.theme-dark .app-nav__link:focus {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
+}
+
+body.theme-dark .app-nav__link.active {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.18);
+  border-left-color: #60a5fa;
+}
+
+body.theme-dark .account-row-clickable:hover {
+  background-color: rgba(96, 165, 250, 0.12) !important;
+}
+
+body.theme-dark .atm-receipt {
+  background: #111827;
+  color: #f3f4f6;
+  border-color: #4b5563;
+}
+
+body.theme-dark .bg-light {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+body.theme-dark .bg-danger-subtle {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+body.theme-dark .border-danger {
+  border-color: #ef4444 !important;
+}
+
+/* Red error must stay RED in dark theme as well */
+body.theme-dark .alert-danger,
+body.theme-dark .text-danger,
+body.theme-dark .invalid-feedback,
+body.theme-dark .is-invalid,
+body.theme-dark .error-text,
+body.theme-dark .error-message {
+  color: #ef4444 !important;
+}
+
+body.theme-dark .alert-danger {
+  border-color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.18) !important;
 }

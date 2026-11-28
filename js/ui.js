@@ -14,7 +14,7 @@
     error: 'alert-danger',
     validation: 'alert-danger',
     'insufficient-funds': 'alert-danger',
-    unauthorized: 'alert-warning',
+    unauthorized: 'alert-danger',
     loading: 'alert-info',
     storage: 'alert-danger',
     empty: 'alert-secondary',
@@ -178,7 +178,7 @@
       return;
     }
     if (!message) {
-      el.textContent = '';
+      el.innerHTML = '';
       el.className = 'feedback-region';
       el.removeAttribute('data-feedback-type');
       return;
@@ -186,7 +186,11 @@
     const alertClass = feedbackTypeClass[type] || 'alert-info';
     el.className = `feedback-region alert ${alertClass} mb-3`;
     el.setAttribute('data-feedback-type', type);
-    el.textContent = message;
+    if (typeof message === 'string' && message.includes('<')) {
+      el.innerHTML = message;
+    } else {
+      el.textContent = message;
+    }
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -366,13 +370,18 @@
           ? `<span class="badge text-bg-warning">Overdraft ${escapeHtml(formatMoney(overdraftLimitPaise(acc)))}</span>`
           : '<span class="text-muted small">No overdraft</span>';
         return `
-          <tr>
-            <td class="font-monospace fw-semibold">${escapeHtml(acc.accountId)}</td>
+          <tr class="account-row-clickable" data-account-id="${escapeHtml(acc.accountId)}" tabindex="0" role="button" title="Tap to view customer details">
+            <td class="font-monospace fw-semibold text-primary">${escapeHtml(acc.accountId)}</td>
             <td class="font-monospace text-muted small">${escapeHtml(acc.accountNumber)}</td>
-            <td>${escapeHtml(acc.holderName)}</td>
+            <td><strong>${escapeHtml(acc.holderName)}</strong></td>
             <td><span class="badge text-bg-secondary text-capitalize">${escapeHtml(acc.type)}</span></td>
             <td class="text-end font-monospace fw-semibold ${balClass}">${escapeHtml(formatMoney(bal))}</td>
             <td>${od}</td>
+            <td class="text-end" onclick="event.stopPropagation();">
+              <button type="button" class="btn btn-sm btn-outline-danger btn-delete-account" data-account-id="${escapeHtml(acc.accountId)}" title="Delete Account">
+                Delete
+              </button>
+            </td>
           </tr>
         `;
       })
@@ -389,12 +398,251 @@
               <th scope="col">Type</th>
               <th scope="col" class="text-end">Balance</th>
               <th scope="col">Overdraft</th>
+              <th scope="col" class="text-end">Action</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
+      <p class="small text-muted mt-2 mb-0">💡 <em>Tap any customer row to view full details and download statements.</em></p>
     `;
+  }
+
+  function showCustomerDetailsModal(accountId) {
+    const bank = CB();
+    const data = loadLedger();
+    const acc = data.accounts.find((a) => a.accountId === accountId);
+    if (!acc) {
+      showFeedback('error', `Account ${accountId} not found.`);
+      return;
+    }
+
+    const modalEl = document.getElementById('customer-details-modal');
+    const bodyEl = document.getElementById('customer-details-body');
+    if (!modalEl || !bodyEl) {
+      return;
+    }
+
+    const bal = accountBalancePaise(acc);
+    const dateFormatted = acc.createdAt ? new Date(acc.createdAt).toLocaleString('en-IN') : 'N/A';
+    const odText = acc.overdraftEnabled
+      ? `Enabled (Limit: ${formatMoney(overdraftLimitPaise(acc))})`
+      : 'Disabled';
+
+    bodyEl.innerHTML = `
+      <div class="row g-3">
+        <div class="col-sm-6">
+          <label class="text-muted small d-block">Account Holder Name</label>
+          <strong class="fs-6">${escapeHtml(acc.holderName)}</strong>
+        </div>
+        <div class="col-sm-6">
+          <label class="text-muted small d-block">Account Number</label>
+          <span class="font-monospace fw-semibold">${escapeHtml(acc.accountNumber)}</span>
+          <span class="badge text-bg-light border ms-1 font-monospace">${escapeHtml(acc.accountId)}</span>
+        </div>
+        <div class="col-sm-6">
+          <label class="text-muted small d-block">Account Type</label>
+          <span class="badge text-bg-secondary text-capitalize">${escapeHtml(acc.type)}</span>
+        </div>
+        <div class="col-sm-6">
+          <label class="text-muted small d-block">Current Balance</label>
+          <strong class="font-monospace fs-5 ${bal < 0 ? 'text-danger' : 'text-success'}">${escapeHtml(formatMoney(bal))}</strong>
+        </div>
+        <div class="col-sm-6">
+          <label class="text-muted small d-block">Account Status</label>
+          <span class="badge text-bg-success text-capitalize">${escapeHtml(acc.status || 'Active')}</span>
+        </div>
+        <div class="col-sm-6">
+          <label class="text-muted small d-block">Created Date & Time</label>
+          <span class="small">${escapeHtml(dateFormatted)}</span>
+        </div>
+        <div class="col-12">
+          <label class="text-muted small d-block">Overdraft Facility</label>
+          <span class="small">${escapeHtml(odText)}</span>
+        </div>
+      </div>
+    `;
+
+    const deleteBtn = document.getElementById('customer-details-delete-btn');
+    if (deleteBtn) {
+      deleteBtn.onclick = () => {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+          const m = bootstrap.Modal.getInstance(modalEl);
+          if (m) {
+            m.hide();
+          }
+        }
+        showDeleteAccountModal(acc.accountId);
+      };
+    }
+
+    const downloadBtn = document.getElementById('customer-details-download-btn');
+    if (downloadBtn) {
+      downloadBtn.onclick = () => {
+        downloadCreationReceipt(acc);
+      };
+    }
+
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
+  }
+
+  function showDeleteAccountModal(accountId) {
+    const bank = CB();
+    const data = loadLedger();
+    const acc = data.accounts.find((a) => a.accountId === accountId);
+    if (!acc) {
+      showFeedback('error', `Account ${accountId} not found.`);
+      return;
+    }
+
+    const modalEl = document.getElementById('delete-account-modal');
+    const previewEl = document.getElementById('delete-account-preview');
+    const confirmBtn = document.getElementById('confirm-delete-account-btn');
+    if (!modalEl || !previewEl || !confirmBtn) {
+      return;
+    }
+
+    const bal = accountBalancePaise(acc);
+    previewEl.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <strong class="fs-6">${escapeHtml(acc.holderName)}</strong>
+        <span class="badge text-bg-secondary text-capitalize">${escapeHtml(acc.type)}</span>
+      </div>
+      <div class="small font-monospace text-muted mb-2">
+        ID: <strong>${escapeHtml(acc.accountId)}</strong> | No: <strong>${escapeHtml(acc.accountNumber)}</strong>
+      </div>
+      <div class="small">
+        Current Balance: <strong class="font-monospace ${bal < 0 ? 'text-danger' : ''}">${escapeHtml(formatMoney(bal))}</strong>
+      </div>
+    `;
+
+    confirmBtn.onclick = () => {
+      const role = getRole();
+      if (!bank || !bank.accountService) {
+        showFeedback('error', 'Account service is not available.');
+        return;
+      }
+
+      const res = bank.accountService.delete(acc.accountId, { role });
+      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const m = bootstrap.Modal.getInstance(modalEl);
+        if (m) {
+          m.hide();
+        }
+      }
+
+      if (!res.ok) {
+        showFeedback('error', res.error || 'Failed to delete account.');
+        return;
+      }
+
+      const persistenceNote = res.persisted
+        ? 'permanently deleted and updated in local storage (Admin role).'
+        : 'deleted from current session only (Developer role: local storage unchanged).';
+
+      const successHtml = `
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <span>Account <strong>${escapeHtml(acc.accountId)}</strong> (${escapeHtml(acc.holderName)}) ${persistenceNote}</span>
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btn-download-last-deletion">
+            📄 Download Deletion Statement
+          </button>
+        </div>
+      `;
+      showFeedback('success', successHtml);
+
+      const downloadLastBtn = document.getElementById('btn-download-last-deletion');
+      if (downloadLastBtn) {
+        downloadLastBtn.onclick = () => {
+          downloadDeletionReceipt(acc, role);
+        };
+      }
+
+      renderAccountList();
+      populateAccountSelects();
+      renderDashboard();
+    };
+
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
+  }
+
+  function downloadCreationReceipt(acc) {
+    const bank = CB();
+    if (!bank || !bank.statementService) {
+      showFeedback('error', 'Statement service is not available.');
+      return;
+    }
+    const role = getRole();
+    const bal = accountBalancePaise(acc);
+    const receiptText = bank.statementService.generateAtmReceipt({
+      dateTime: acc.createdAt,
+      accountNumber: acc.accountNumber,
+      accountId: acc.accountId,
+      holderName: acc.holderName,
+      accountType: acc.type,
+      txnType: 'created',
+      role: role,
+      balancePaise: bal,
+      status: acc.status || 'ACTIVE'
+    });
+
+    bank.statementService.downloadReceiptFile(
+      receiptText,
+      `atm_receipt_${acc.accountId}_created.txt`
+    );
+    showAtmReceiptModal(receiptText, `atm_receipt_${acc.accountId}_created.txt`);
+  }
+
+  function downloadDeletionReceipt(acc, role) {
+    const bank = CB();
+    if (!bank || !bank.statementService) {
+      showFeedback('error', 'Statement service is not available.');
+      return;
+    }
+    const receiptText = bank.statementService.generateAtmReceipt({
+      dateTime: new Date().toISOString(),
+      accountNumber: acc.accountNumber,
+      accountId: acc.accountId,
+      holderName: acc.holderName,
+      accountType: acc.type,
+      txnType: 'deleted',
+      role: role || getRole(),
+      balancePaise: 0,
+      status: 'ACCOUNT CLOSED'
+    });
+
+    bank.statementService.downloadReceiptFile(
+      receiptText,
+      `atm_receipt_${acc.accountId}_deleted.txt`
+    );
+    showAtmReceiptModal(receiptText, `atm_receipt_${acc.accountId}_deleted.txt`);
+  }
+
+  function showAtmReceiptModal(receiptText, filename) {
+    const modalEl = document.getElementById('atm-receipt-modal');
+    const textEl = document.getElementById('atm-receipt-text');
+    const downloadBtn = document.getElementById('atm-receipt-download-file-btn');
+    if (!modalEl || !textEl) {
+      return;
+    }
+    textEl.textContent = receiptText;
+    if (downloadBtn) {
+      downloadBtn.onclick = () => {
+        const bank = CB();
+        if (bank && bank.statementService) {
+          bank.statementService.downloadReceiptFile(receiptText, filename);
+        }
+      };
+    }
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
   }
 
   function wireAccountsScreen() {
@@ -402,6 +650,42 @@
       return;
     }
     accountsScreenWired = true;
+
+    const listEl = document.getElementById('account-list');
+    if (listEl) {
+      listEl.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('.btn-delete-account');
+        if (delBtn) {
+          e.stopPropagation();
+          const accId = delBtn.getAttribute('data-account-id');
+          if (accId) {
+            showDeleteAccountModal(accId);
+          }
+          return;
+        }
+
+        const row = e.target.closest('.account-row-clickable');
+        if (row) {
+          const accId = row.getAttribute('data-account-id');
+          if (accId) {
+            showCustomerDetailsModal(accId);
+          }
+        }
+      });
+
+      listEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const row = e.target.closest('.account-row-clickable');
+          if (row) {
+            e.preventDefault();
+            const accId = row.getAttribute('data-account-id');
+            if (accId) {
+              showCustomerDetailsModal(accId);
+            }
+          }
+        }
+      });
+    }
 
     const searchInput = document.getElementById('account-search');
     if (searchInput) {
@@ -455,11 +739,15 @@
           submitBtn.textContent = 'Creating…';
         }
 
-        const result = bank.accountService.create({
-          holderName,
-          type,
-          openingDepositPaise
-        });
+        const role = getRole();
+        const result = bank.accountService.create(
+          {
+            holderName,
+            type,
+            openingDepositPaise
+          },
+          { role }
+        );
 
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -471,10 +759,28 @@
           return;
         }
 
-        const msg =
-          result.message ||
-          `Account ${result.account.accountId} successfully created for ${result.account.holderName}.`;
-        showFeedback('success', msg);
+        const newAcc = result.account;
+        const persistenceNote = result.persisted
+          ? 'created and saved to local storage (Admin role).'
+          : 'created for current session only (Developer role: local storage unchanged).';
+
+        const successHtml = `
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span>Account <strong>${escapeHtml(newAcc.accountId)}</strong> (${escapeHtml(newAcc.holderName)}) ${persistenceNote}</span>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btn-download-new-account-receipt">
+              📄 Download Creation Statement
+            </button>
+          </div>
+        `;
+        showFeedback('success', successHtml);
+
+        const dlBtn = document.getElementById('btn-download-new-account-receipt');
+        if (dlBtn) {
+          dlBtn.onclick = () => {
+            downloadCreationReceipt(newAcc);
+          };
+        }
+
         form.reset();
         renderAccountList();
         renderDashboard();
@@ -826,6 +1132,64 @@
     if (exportBtn) {
       exportBtn.addEventListener('click', exportStatementCsv);
     }
+
+    const downloadCreationBtn = document.getElementById('statement-download-creation');
+    if (downloadCreationBtn) {
+      downloadCreationBtn.addEventListener('click', () => {
+        const select = document.getElementById('statement-account');
+        const accountId = select ? select.value : '';
+        if (!accountId) {
+          showFeedback('validation', 'Please select an account first to download its creation statement.');
+          return;
+        }
+        const data = loadLedger();
+        const acc = data.accounts.find((a) => a.accountId === accountId);
+        if (!acc) {
+          showFeedback('error', `Account ${accountId} not found.`);
+          return;
+        }
+        downloadCreationReceipt(acc);
+        showFeedback('success', `Account creation statement downloaded for ${acc.accountId}.`);
+      });
+    }
+
+    const downloadDeletionBtn = document.getElementById('statement-download-deletion');
+    if (downloadDeletionBtn) {
+      downloadDeletionBtn.addEventListener('click', () => {
+        const select = document.getElementById('statement-account');
+        const accountId = select ? select.value : '';
+        const bank = CB();
+        const deletedRecord = accountId && bank && bank.statementService
+          ? bank.statementService.getDeletedRecord(accountId)
+          : null;
+
+        if (deletedRecord) {
+          downloadDeletionReceipt(deletedRecord.account, deletedRecord.role);
+          showFeedback('success', `Account deletion statement downloaded for ${deletedRecord.account.accountId}.`);
+          return;
+        }
+
+        if (accountId) {
+          const data = loadLedger();
+          const acc = data.accounts.find((a) => a.accountId === accountId);
+          if (acc) {
+            downloadDeletionReceipt(acc, getRole());
+            showFeedback('success', `Account deletion statement downloaded for ${acc.accountId}.`);
+            return;
+          }
+        }
+
+        const allDeleted = bank && bank.statementService ? bank.statementService.getAllDeletedRecords() : [];
+        if (allDeleted.length) {
+          const latest = allDeleted[allDeleted.length - 1];
+          downloadDeletionReceipt(latest.account, latest.role);
+          showFeedback('success', `Account deletion statement downloaded for ${latest.account.accountId}.`);
+          return;
+        }
+
+        showFeedback('validation', 'Please select an account first or delete an account to generate a deletion statement.');
+      });
+    }
   }
 
   function renderStatement() {
@@ -1044,6 +1408,49 @@
     }
   }
 
+  function updateThemeToggleUI() {
+    const bank = CB();
+    const theme = (bank && bank.themeService) ? bank.themeService.getTheme() : 'light';
+    const isDark = theme === 'dark';
+    document.body.classList.toggle('theme-dark', isDark);
+
+    const iconEl = document.getElementById('theme-toggle-icon');
+    const textEl = document.getElementById('theme-toggle-text');
+    if (iconEl) {
+      iconEl.textContent = isDark ? '☀️' : '🌙';
+    }
+    if (textEl) {
+      textEl.textContent = isDark ? 'Light' : 'Dark';
+    }
+  }
+
+  function wireThemeToggle() {
+    const btn = document.getElementById('theme-toggle-btn');
+    if (!btn || btn.dataset.wired) {
+      return;
+    }
+    btn.dataset.wired = 'true';
+
+    btn.addEventListener('click', () => {
+      const bank = CB();
+      if (!bank || !bank.themeService) {
+        return;
+      }
+      const role = getRole();
+      const currentTheme = bank.themeService.getTheme();
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+      // Logic check: Developer role is blocked with a RED error message
+      const res = bank.themeService.setTheme(nextTheme, role);
+      if (!res.ok) {
+        showFeedback('error', res.error || 'Developer role does not have privilege to change themes.');
+        return;
+      }
+      updateThemeToggleUI();
+      showFeedback('info', `Theme changed to ${nextTheme} mode.`);
+    });
+  }
+
   function renderRoleSwitch() {
     const role = getRole();
     const devRadio = document.getElementById('role-developer');
@@ -1055,6 +1462,25 @@
       adminRadio.checked = role === 'admin';
     }
     applyBodyRole(role);
+
+    // Theme toggle container: Available to Admin only. Hide/disable for Developer.
+    const themeContainer = document.getElementById('theme-switch-container');
+    const themeBtn = document.getElementById('theme-toggle-btn');
+    if (themeContainer) {
+      if (role === 'admin') {
+        themeContainer.classList.remove('d-none');
+        if (themeBtn) {
+          themeBtn.disabled = false;
+        }
+      } else {
+        themeContainer.classList.add('d-none');
+        if (themeBtn) {
+          themeBtn.disabled = true;
+        }
+      }
+    }
+    wireThemeToggle();
+    updateThemeToggleUI();
   }
 
   function refreshForView(view) {
@@ -1096,6 +1522,7 @@
     populateAccountSelects,
     refreshForView,
     applyBodyRole,
+    updateThemeToggleUI,
     getRole
   };
 

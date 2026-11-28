@@ -67,10 +67,31 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  // In-memory session state for role-based behaviour
+  // (Developer changes stay in app session and do not affect localStorage)
+  let sessionState = {
+    accounts: null,
+    transactions: null,
+    transfers: null,
+    prefs: null
+  };
+
   const LocalDataStore = {
     KEYS,
 
     load() {
+      // If we have in-memory session accounts/data from developer actions, use session state
+      if (sessionState.accounts !== null) {
+        return {
+          ok: true,
+          error: null,
+          accounts: deepClone(sessionState.accounts),
+          transactions: deepClone(sessionState.transactions || []),
+          transfers: deepClone(sessionState.transfers || []),
+          prefs: sessionState.prefs ? deepClone(sessionState.prefs) : null
+        };
+      }
+
       const accountsR = readKey(KEYS.ACCOUNTS);
       const txnsR = readKey(KEYS.TRANSACTIONS);
       const transfersR = readKey(KEYS.TRANSFERS);
@@ -91,19 +112,58 @@
         };
       }
 
+      const loadedAccounts = accountsR.data || [];
+      const loadedTxns = txnsR.data || [];
+      const loadedTransfers = transfersR.data || [];
+      const loadedPrefs = prefsR.data;
+
+      // Sync session state with initial storage load
+      sessionState = {
+        accounts: deepClone(loadedAccounts),
+        transactions: deepClone(loadedTxns),
+        transfers: deepClone(loadedTransfers),
+        prefs: loadedPrefs ? deepClone(loadedPrefs) : null
+      };
+
       return {
         ok: true,
         error: null,
-        accounts: accountsR.data || [],
-        transactions: txnsR.data || [],
-        transfers: transfersR.data || [],
-        prefs: prefsR.data
+        accounts: loadedAccounts,
+        transactions: loadedTxns,
+        transfers: loadedTransfers,
+        prefs: loadedPrefs
       };
     },
 
-    save(payload) {
+    save(payload, options) {
       if (!payload || typeof payload !== 'object') {
         return { ok: false, error: 'Save payload is required.' };
+      }
+
+      const opts = options || {};
+      const shouldPersist = opts.persist !== false;
+
+      // Always update session state so current app session reflects changes immediately
+      if (sessionState.accounts === null) {
+        this.load();
+      }
+      if (payload.accounts !== undefined) {
+        sessionState.accounts = deepClone(payload.accounts);
+      }
+      if (payload.transactions !== undefined) {
+        sessionState.transactions = deepClone(payload.transactions);
+      }
+      if (payload.transfers !== undefined) {
+        sessionState.transfers = deepClone(payload.transfers);
+      }
+      if (payload.prefs !== undefined) {
+        sessionState.prefs = deepClone(payload.prefs);
+      }
+
+      // If persistence is disabled (e.g. Developer role created/deleted account),
+      // DO NOT write to, modify or clear localStorage!
+      if (!shouldPersist) {
+        return { ok: true, error: null, persisted: false };
       }
 
       const results = [];
@@ -124,13 +184,20 @@
       if (failed.length) {
         return {
           ok: false,
-          error: failed.map((f) => f.error).join('; ')
+          error: failed.map((f) => f.error).join('; '),
+          persisted: false
         };
       }
-      return { ok: true, error: null };
+      return { ok: true, error: null, persisted: true };
     },
 
     resetToSample() {
+      sessionState = {
+        accounts: null,
+        transactions: null,
+        transfers: null,
+        prefs: null
+      };
       const sample = root.CoreBank && root.CoreBank.sampleData;
       if (!sample) {
         return { ok: false, error: 'sampleData is not loaded. Include js/sample-data.js before store.js.' };
@@ -140,7 +207,7 @@
         transactions: deepClone(sample.transactions),
         transfers: deepClone(sample.transfers),
         prefs: sample.getDefaultPrefs ? sample.getDefaultPrefs() : deepClone(sample.prefs)
-      });
+      }, { persist: true });
     }
   };
 

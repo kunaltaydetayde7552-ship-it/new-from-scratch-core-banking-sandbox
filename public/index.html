@@ -40,6 +40,13 @@
                 <label class="btn btn-outline-primary btn-sm" for="role-admin">Admin</label>
               </div>
             </div>
+            <!-- Theme toggle (Admin only) -->
+            <div class="theme-switch d-none" id="theme-switch-container">
+              <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" id="theme-toggle-btn" aria-label="Toggle theme">
+                <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
+                <span id="theme-toggle-text">Dark Mode</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -250,6 +257,8 @@
                   <div class="col-12 d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary" id="statement-apply">Apply filters</button>
                     <button type="button" class="btn btn-outline-secondary" id="statement-export-csv">Export CSV</button>
+                    <button type="button" class="btn btn-outline-primary" id="statement-download-creation">Download Creation Statement</button>
+                    <button type="button" class="btn btn-outline-danger" id="statement-download-deletion">Download Deletion Statement</button>
                   </div>
                 </form>
               </div>
@@ -354,6 +363,76 @@
             </article>
           </section>
         </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm Delete Account (RED highlight) -->
+  <div class="modal fade" id="delete-account-modal" tabindex="-1" aria-labelledby="delete-account-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border border-danger border-2 shadow">
+        <div class="modal-header border-bottom border-danger bg-danger-subtle">
+          <h5 class="modal-title text-danger fw-bold d-flex align-items-center gap-2" id="delete-account-modal-label">
+            <span aria-hidden="true">⚠️</span> Confirm Account Deletion
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">Are you sure you want to delete this account?</p>
+          <div class="p-3 mb-3 border border-danger rounded bg-light" id="delete-account-preview">
+            <!-- Account details populated dynamically -->
+          </div>
+          <p class="text-danger small mb-0 fw-semibold">
+            Warning: This action will permanently remove or close this account in the sandbox.
+          </p>
+        </div>
+        <div class="modal-footer border-top border-danger">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirm-delete-account-btn">Delete Account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Customer Details on Tap -->
+  <div class="modal fade" id="customer-details-modal" tabindex="-1" aria-labelledby="customer-details-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold" id="customer-details-modal-label">Customer Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="customer-details-body">
+          <!-- Populated dynamically on tap/click -->
+        </div>
+        <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-danger btn-sm" id="customer-details-delete-btn">Delete Account</button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="customer-details-download-btn">Download Creation Statement</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: ATM Receipt Statement Preview & Download -->
+  <div class="modal fade" id="atm-receipt-modal" tabindex="-1" aria-labelledby="atm-receipt-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold" id="atm-receipt-modal-label">ATM Mini-Statement</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-3">
+          <div class="atm-receipt-container">
+            <pre class="atm-receipt mb-0" id="atm-receipt-text"></pre>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="atm-receipt-download-file-btn">Download Statement File</button>
+        </div>
       </div>
     </div>
   </div>

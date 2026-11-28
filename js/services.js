@@ -175,7 +175,7 @@
   }
 
   const AccountService = {
-    create({ holderName, type, openingDepositPaise }) {
+    create({ holderName, type, openingDepositPaise }, options = {}) {
       const { store } = getDeps();
       if (!holderName || !String(holderName).trim()) {
         return { ok: false, error: 'Account holder name is required.' };
@@ -186,6 +186,9 @@
       if (openingDepositPaise === undefined || openingDepositPaise < 0) {
         return { ok: false, error: 'Opening deposit cannot be negative.' };
       }
+
+      const role = options.role || (root.CoreBank && root.CoreBank.getRole ? root.CoreBank.getRole() : 'developer');
+      const shouldPersist = RoleGuard.canPersistAccountChanges(role);
 
       const loaded = store.load();
       if (!loaded.ok) {
@@ -227,12 +230,50 @@
         transactions,
         transfers: loaded.transfers,
         prefs: loaded.prefs || (root.CoreBank.sampleData && root.CoreBank.sampleData.getDefaultPrefs())
-      });
+      }, { persist: shouldPersist });
 
       if (!saveResult.ok) {
         return { ok: false, error: saveResult.error };
       }
-      return { ok: true, account };
+      return { ok: true, account, persisted: shouldPersist, role };
+    },
+
+    delete(accountId, options = {}) {
+      const { store } = getDeps();
+      if (!accountId) {
+        return { ok: false, error: 'Account ID is required for deletion.' };
+      }
+
+      const role = options.role || (root.CoreBank && root.CoreBank.getRole ? root.CoreBank.getRole() : 'developer');
+      const shouldPersist = RoleGuard.canPersistAccountChanges(role);
+
+      const loaded = store.load();
+      if (!loaded.ok) {
+        return { ok: false, error: loaded.error };
+      }
+
+      const account = loaded.accounts.find((a) => a.accountId === accountId);
+      if (!account) {
+        return { ok: false, error: `Account ${accountId} not found.` };
+      }
+
+      const updatedAccounts = loaded.accounts.filter((a) => a.accountId !== accountId);
+
+      const saveResult = store.save({
+        accounts: updatedAccounts,
+        transactions: loaded.transactions,
+        transfers: loaded.transfers,
+        prefs: loaded.prefs
+      }, { persist: shouldPersist });
+
+      if (!saveResult.ok) {
+        return { ok: false, error: saveResult.error };
+      }
+
+      // Record deletion in memory for ATM deletion statement download
+      StatementService.recordDeletion(account, role);
+
+      return { ok: true, account, persisted: shouldPersist, role };
     }
   };
 
@@ -412,6 +453,110 @@
   const RoleGuard = {
     canAdmin(role) {
       return String(role || '').toLowerCase() === 'admin';
+    },
+    canChangeTheme(role) {
+      return String(role || '').toLowerCase() === 'admin';
+    },
+    canPersistAccountChanges(role) {
+      return String(role || '').toLowerCase() === 'admin';
+    }
+  };
+
+  const ThemeService = {
+    STORAGE_KEY: 'corebank_theme',
+
+    getTheme() {
+      try {
+        return root.localStorage.getItem(this.STORAGE_KEY) || 'light';
+      } catch (e) {
+        return 'light';
+      }
+    },
+
+    setTheme(theme, role) {
+      const userRole = role || (root.CoreBank && root.CoreBank.getRole ? root.CoreBank.getRole() : 'developer');
+      // Developer role must NOT have privilege to change themes.
+      if (!RoleGuard.canChangeTheme(userRole)) {
+        return {
+          ok: false,
+          error: 'Developer role does not have privilege to change themes. Admin access required.'
+        };
+      }
+      const validTheme = theme === 'dark' ? 'dark' : 'light';
+      try {
+        root.localStorage.setItem(this.STORAGE_KEY, validTheme);
+      } catch (e) {
+        // storage disabled or quota
+      }
+      return { ok: true, theme: validTheme };
+    }
+  };
+
+  const StatementService = {
+    deletedRecords: {},
+
+    recordDeletion(account, role) {
+      if (!account || !account.accountId) {
+        return;
+      }
+      this.deletedRecords[account.accountId] = {
+        account: JSON.parse(JSON.stringify(account)),
+        deletedAt: new Date().toISOString(),
+        role: role || 'admin'
+      };
+    },
+
+    getDeletedRecord(accountId) {
+      return this.deletedRecords[accountId] || null;
+    },
+
+    getAllDeletedRecords() {
+      return Object.values(this.deletedRecords);
+    },
+
+    generateAtmReceipt({ bankName, dateTime, accountNumber, accountId, holderName, accountType, txnType, role, balancePaise, status }) {
+      const { money } = getDeps();
+      const dt = dateTime ? new Date(dateTime).toLocaleString('en-IN', { hour12: true }) : new Date().toLocaleString('en-IN', { hour12: true });
+      const isDeleted = String(txnType || '').toLowerCase().includes('delete');
+      const typeStr = isDeleted ? 'Account Deleted' : 'Account Created';
+      const roleStr = String(role || 'Admin').toLowerCase() === 'admin' ? 'Admin' : 'Developer';
+      const balStr = money ? money.formatINR(balancePaise || 0) : `₹${((balancePaise || 0) / 100).toFixed(2)}`;
+      const statusStr = status || (isDeleted ? 'ACCOUNT CLOSED' : 'ACTIVE');
+
+      // Monospace ATM machine mini-statement format with narrow width (40 chars)
+      return [
+        '========================================',
+        '          COREBANKING SANDBOX           ',
+        '        ATM MINI-STATEMENT RECEIPT      ',
+        '========================================',
+        `DATE & TIME : ${dt}`,
+        `ACCOUNT NO  : ${accountNumber || 'N/A'}`,
+        `ACCOUNT ID  : ${accountId || 'N/A'}`,
+        `HOLDER NAME : ${holderName || 'N/A'}`,
+        `ACC TYPE    : ${String(accountType || 'SAVINGS').toUpperCase()}`,
+        `TXN TYPE    : ${typeStr}`,
+        `PERFORMED BY: ${roleStr}`,
+        '----------------------------------------',
+        `BALANCE     : ${balStr}`,
+        `STATUS      : ${statusStr}`,
+        '----------------------------------------',
+        '     Thank you for banking with us!     ',
+        '   Demo Sandbox - No Real Money Used    ',
+        '========================================'
+      ].join('\n');
+    },
+
+    downloadReceiptFile(receiptText, filename) {
+      // Must NOT modify or clear local storage. Only reads data and generates file.
+      const blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'atm_statement.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -421,6 +566,8 @@
     balanceCalculator: BalanceCalculator,
     accountService: AccountService,
     adminService: AdminService,
+    statementService: StatementService,
+    themeService: ThemeService,
     roleGuard: RoleGuard
   });
 })(typeof window !== 'undefined' ? window : globalThis);

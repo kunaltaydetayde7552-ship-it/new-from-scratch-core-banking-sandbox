@@ -232,6 +232,14 @@ class Bank:
     self.save()
     return account
 
+  def delete_account(self, account_id: str) -> Account:
+    account = self.get_account(account_id)
+    if account is None:
+      raise ValueError(f"Account '{account_id}' not found.")
+    self._accounts = [a for a in self._accounts if a.accountId.upper() != account_id.strip().upper()]
+    self.save()
+    return account
+
   def transfer(
     self,
     from_id: str,
@@ -418,6 +426,9 @@ def main(argv: Optional[List[str]] = None) -> None:
   overdraft_parser.add_argument("--disable", action="store_true")
   overdraft_parser.add_argument("--limit", default="0.00")
 
+  delete_parser = subparsers.add_parser("delete", help="Delete an account")
+  delete_parser.add_argument("--account", required=True, help="Account ID to delete")
+
   subparsers.add_parser("reset", help="Reset to 5 sample accounts and seed ledger")
 
   args = parser.parse_args(argv)
@@ -435,6 +446,15 @@ def main(argv: Optional[List[str]] = None) -> None:
       print(f"Type: {account.type} | Balance: {format_paise(account.balancePaise)}\n")
     except ValueError as exc:
       print(f"\n[ERROR] Account creation failed: {exc}\n", file=sys.stderr)
+      sys.exit(1)
+    return
+
+  if args.command == "delete":
+    try:
+      account = bank.delete_account(args.account)
+      print(f"\n[SUCCESS] Deleted account {account.accountId} ({account.holderName}).\n")
+    except ValueError as exc:
+      print(f"\n[ERROR] Account deletion failed: {exc}\n", file=sys.stderr)
       sys.exit(1)
     return
 
