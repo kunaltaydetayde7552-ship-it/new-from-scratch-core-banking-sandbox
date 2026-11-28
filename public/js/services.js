@@ -188,7 +188,13 @@
       }
 
       const role = options.role || (root.CoreBank && root.CoreBank.getRole ? root.CoreBank.getRole() : 'developer');
-      const shouldPersist = RoleGuard.canPersistAccountChanges(role);
+      if (!RoleGuard.canPersistAccountChanges(role)) {
+        return {
+          ok: false,
+          error: 'Developer role does not have permission to create accounts. Please switch to Admin role.'
+        };
+      }
+      const shouldPersist = true;
 
       const loaded = store.load();
       if (!loaded.ok) {
@@ -245,7 +251,13 @@
       }
 
       const role = options.role || (root.CoreBank && root.CoreBank.getRole ? root.CoreBank.getRole() : 'developer');
-      const shouldPersist = RoleGuard.canPersistAccountChanges(role);
+      if (!RoleGuard.canPersistAccountChanges(role)) {
+        return {
+          ok: false,
+          error: 'Developer role does not have permission to delete accounts. Please switch to Admin role.'
+        };
+      }
+      const shouldPersist = true;
 
       const loaded = store.load();
       if (!loaded.ok) {

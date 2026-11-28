@@ -335,6 +335,33 @@
     });
   }
 
+  function updateAccountFormRoleState() {
+    const role = getRole();
+    const isAdmin = role === 'admin';
+    const submitBtn = document.getElementById('create-account-submit');
+    const cardHeader = document.querySelector('#view-accounts .card-header h3');
+
+    if (cardHeader) {
+      cardHeader.innerHTML = isAdmin
+        ? 'Create account <span class="badge text-bg-success ms-1 small">Admin</span>'
+        : 'Create account <span class="badge text-bg-warning ms-1 small">Admin Only</span>';
+    }
+
+    if (submitBtn) {
+      if (!isAdmin) {
+        submitBtn.disabled = true;
+        submitBtn.className = 'btn btn-secondary w-100';
+        submitBtn.textContent = 'Create account (Admin Only)';
+        submitBtn.title = 'Switch to Admin role in header to create accounts';
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.className = 'btn btn-primary w-100';
+        submitBtn.textContent = 'Create account';
+        submitBtn.title = '';
+      }
+    }
+  }
+
   function renderAccountList(accounts, query) {
     const listEl = document.getElementById('account-list');
     if (!listEl) {
@@ -378,8 +405,8 @@
             <td class="text-end font-monospace fw-semibold ${balClass}">${escapeHtml(formatMoney(bal))}</td>
             <td>${od}</td>
             <td class="text-end" onclick="event.stopPropagation();">
-              <button type="button" class="btn btn-sm btn-outline-danger btn-delete-account" data-account-id="${escapeHtml(acc.accountId)}" title="Delete Account">
-                Delete
+              <button type="button" class="btn btn-sm ${getRole() === 'admin' ? 'btn-outline-danger' : 'btn-outline-secondary opacity-75'} btn-delete-account" data-account-id="${escapeHtml(acc.accountId)}" title="${getRole() === 'admin' ? 'Delete Account' : 'Admin role required to delete account'}">
+                ${getRole() === 'admin' ? 'Delete' : 'Delete (Admin)'}
               </button>
             </td>
           </tr>
@@ -465,7 +492,14 @@
 
     const deleteBtn = document.getElementById('customer-details-delete-btn');
     if (deleteBtn) {
+      const isAdmin = getRole() === 'admin';
+      deleteBtn.textContent = isAdmin ? 'Delete Account' : 'Delete Account (Admin Only)';
+      deleteBtn.className = isAdmin ? 'btn btn-outline-danger btn-sm' : 'btn btn-outline-secondary btn-sm opacity-75';
       deleteBtn.onclick = () => {
+        if (!isAdmin) {
+          showFeedback('error', 'Developer role does not have permission to delete accounts. Please switch to Admin role in header.');
+          return;
+        }
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
           const m = bootstrap.Modal.getInstance(modalEl);
           if (m) {
@@ -657,6 +691,11 @@
         const delBtn = e.target.closest('.btn-delete-account');
         if (delBtn) {
           e.stopPropagation();
+          const role = getRole();
+          if (role !== 'admin') {
+            showFeedback('error', 'Developer role does not have permission to delete accounts. Please switch to Admin role in header.');
+            return;
+          }
           const accId = delBtn.getAttribute('data-account-id');
           if (accId) {
             showDeleteAccountModal(accId);
@@ -740,6 +779,12 @@
         }
 
         const role = getRole();
+        if (role !== 'admin') {
+          showFeedback('error', 'Developer role does not have permission to create accounts. Please switch to Admin role in header.');
+          updateAccountFormRoleState();
+          return;
+        }
+
         const result = bank.accountService.create(
           {
             holderName,
@@ -794,6 +839,7 @@
     const searchInput = document.getElementById('account-search');
     const query = searchInput ? searchInput.value : '';
     renderAccountList(null, query);
+    updateAccountFormRoleState();
   }
 
   function populateAccountSelects() {
@@ -1481,6 +1527,9 @@
     }
     wireThemeToggle();
     updateThemeToggleUI();
+    updateAccountFormRoleState();
+    const searchInput = document.getElementById('account-search');
+    renderAccountList(null, searchInput ? searchInput.value : '');
   }
 
   function refreshForView(view) {
